@@ -3,7 +3,6 @@
 A measurement-entry screen for one sample point on a process line, built in Node-RED with FlowFuse Dashboard 2.0. The screen is generated from a state table: swap the table and you get another machine's screen with the same interaction model.
 
 **Try it in the browser:** https://yiyu-w.github.io/node-red-state-table-hmi/
-**Walkthrough (90 s):** [recording link]
 
 The browser preview runs the same template, function nodes and wiring as `flows.json`. The one difference is where evaluation happens: in the running flow the Node-RED server judges each reading; in the preview that function runs in the page.
 
