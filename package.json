@@ -1,0 +1,18 @@
+{
+  "name": "node-red-state-table-hmi",
+  "version": "1.0.0",
+  "description": "A measurement-entry HMI screen in Node-RED and FlowFuse Dashboard, generated from a state table.",
+  "private": true,
+  "scripts": {
+    "start": "node-red --userDir . flows.json",
+    "build:preview": "node scripts/build-preview.js"
+  },
+  "dependencies": {
+    "@flowfuse/node-red-dashboard": "1.31.0",
+    "node-red": "5.0.7"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reactor UIT · Node-RED state-table HMI (browser preview)</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font-family: "Inter", "Segoe UI", system-ui, sans-serif; background: #eef0f1; color: #1d2731; }
+  .bar { height: 56px; background: #1d2731; color: #fff; display: flex; align-items: center; padding: 0 18px; font-size: 20px; }
+  .shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: calc(100% - 56px); }
+  .nav { background: #1d2731; padding: 8px; }
+  .nav-item { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 3px; background: #2b3641; color: #fff; font-size: 15px; }
+  .nav-item svg { width: 20px; height: 20px; fill: #fff; flex: none; }
+  main { padding: 12px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .group { background: #fff; border: 1px solid #c9ced2; border-radius: 2px; padding: 14px 16px; }
+  .note { margin: 0; font-size: 13px; line-height: 1.55; color: #3d4850; max-width: 72ch; }
+  .note a { color: #3f6e8c; }
+  details summary { cursor: pointer; font-size: 14px; font-weight: 600; padding: 2px 0; }
+  details summary:focus-visible, .btn:focus-visible { outline: 2px solid #1d2731; outline-offset: 2px; }
+  details p { font-size: 13px; line-height: 1.55; color: #3d4850; max-width: 72ch; margin: 8px 0 10px; }
+  pre { margin: 0; overflow-x: auto; background: #f5f6f7; border: 1px solid #dde1e4; padding: 12px 14px; font: 12.5px/1.5 ui-monospace, "SF Mono", Menlo, monospace; color: #1d2731; }
+
+.mp {
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  color: #1d2731;
+  padding: 4px 2px 8px;
+}
+.mp-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #1d2731;
+}
+.mp-eq {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  margin-right: 10px;
+}
+.mp-pt { font-size: 22px; font-weight: 500; }
+.mp-round { font-size: 14px; color: #5b6670; }
+
+.mp-banner {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border-left: 6px solid #5b6670;
+  background: #f2f4f5;
+}
+.mp-banner.is-fault { border-left-color: #a3231b; background: #fbeceb; }
+.mp-banner.is-warning { border-left-color: #a86b12; background: #fdf3e4; }
+.mp-banner.is-ok { border-left-color: #3f6e8c; background: #eef3f6; }
+.mp-banner-t { font-weight: 600; font-size: 15px; }
+.mp-banner-b { font-size: 14px; color: #3d4850; margin-top: 3px; }
+
+.mp-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+.mp-table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid #dde1e4;
+  vertical-align: middle;
+}
+.row-fault { background: #fbeceb; }
+.row-warning { background: #fdf3e4; }
+
+.c-label { width: 45%; }
+.lbl { font-size: 15px; }
+.band { font-size: 12px; color: #6b757d; margin-top: 2px; }
+
+.c-input input {
+  width: 108px;
+  padding: 9px 10px;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid #9aa3aa;
+  border-radius: 2px;
+  background: #fff;
+  color: #1d2731;
+}
+.c-input input:focus { outline: 2px solid #3f6e8c; outline-offset: 1px; }
+.unit { margin-left: 7px; font-size: 13px; color: #6b757d; }
+
+.c-state { text-align: right; width: 30%; }
+.pill {
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 2px;
+  border: 1px solid transparent;
+}
+.p-none { color: transparent; }
+.p-normal { color: #55606a; }
+.p-warning { color: #7d4f08; border-color: #d9a441; background: #fdf3e4; font-weight: 600; }
+.p-fault { color: #fff; background: #a3231b; font-weight: 600; }
+
+.mp-actions { margin-top: 14px; }
+.act {
+  padding: 10px 12px;
+  border: 1px solid #dde1e4;
+  border-left: 4px solid #6b757d;
+  margin-bottom: 8px;
+  background: #fff;
+}
+.act-h { font-weight: 600; font-size: 14px; }
+.act-r { font-size: 14px; margin-top: 3px; }
+.act-a { font-size: 12px; color: #6b757d; margin-top: 4px; }
+
+.mp-foot {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.btn {
+  padding: 11px 22px;
+  font-size: 15px;
+  border: none;
+  border-radius: 2px;
+  background: #3f6e8c;
+  color: #fff;
+  cursor: pointer;
+}
+.btn:disabled { background: #c2c8cc; color: #7b848b; cursor: not-allowed; }
+.foot-note { font-size: 13px; color: #6b757d; }
+
+  @media (max-width: 700px) {
+    .shell { grid-template-columns: 1fr; }
+    .nav { display: none; }
+    .c-label { width: auto; }
+    .c-input { white-space: nowrap; }
+    .c-input input { width: 76px; }
+    .btn { white-space: nowrap; }
+  }
+</style>
+</head>
+<body>
+<div class="bar">Reactor UIT</div>
+<div class="shell">
+  <nav class="nav" aria-label="Pages">
+    <div class="nav-item" aria-current="page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1c0-.21-.07-.41-.18-.57L13 9.16V4h-2v5.16L5.18 18.43c-.11.16-.18.36-.18.57m1 3a3 3 0 0 1-3-3c0-.6.18-1.16.5-1.63L9 7.81V6a1 1 0 0 1-1-1V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1v1.81l5.5 9.56c.32.47.5 1.03.5 1.63a3 3 0 0 1-3 3zm7-6 1.34-1.34L16.27 18H7.73l2.66-4.61z"/></svg>
+      Reactor UIT
+    </div>
+  </nav>
+  <main>
+    <div class="group"><div id="screen"></div></div>
+    <div class="group">
+      <p class="note">Browser preview of a Node-RED screen built with FlowFuse Dashboard. It runs the same template, function nodes and wiring as <code>flows.json</code>. In the running flow the reading is evaluated by the Node-RED server; here that same function runs in your browser. Source and setup: <a href="https://github.com/yiyu-w/node-red-state-table-hmi">github.com/yiyu-w/node-red-state-table-hmi</a></p>
+    </div>
+    <div class="group">
+      <details>
+        <summary>The state table this screen is generated from</summary>
+        <p>Everything machine-specific lives in this array. The screen has no knowledge of what a reactor is: replace the table and you get another machine's screen with the same interaction, the same colour meanings and the same reset vocabulary.</p>
+        <pre>// ---------------------------------------------------------------
+// THE STATE TABLE IS THE CONTRACT.
+// Condition -&gt; indication -&gt; reset rule -&gt; authority.
+// The screen is generated from this. Change the table, change the
+// machine. Nothing below this node knows what a reactor is.
+// ---------------------------------------------------------------
+
+const screen = {
+    equipment: 'BIO 1',
+    point: 'Reactor UIT',
+    round: 'Round 3 of 6',
+    gate: false            // true = this point releases a batch
+};
+
+const parameters = [
+    {
+        key: 'mono', label: 'Monoglyceride', unit: '%', step: 0.01,
+        normal: [0.40, 0.70],
+        warn:   [0.30, 0.80],
+        reset:  'Clears when the next reading is inside the normal band.',
+        authority: 'Operator'
+    },
+    {
+        key: 'di', label: 'Diglyceride', unit: '%', step: 0.01,
+        normal: [0.00, 0.16],
+        warn:   [0.00, 0.20],
+        limit:  0.20,
+        reset:  'Does not clear. Supervisor decision required before release.',
+        authority: 'Supervisor'
+    },
+    {
+        key: 'tri', label: 'Triglyceride', unit: '%', step: 0.01,
+        normal: [0.00, 0.15],
+        warn:   [0.00, 0.20],
+        reset:  'Clears when the next reading is inside the normal band.',
+        authority: 'Operator'
+    },
+    {
+        key: 'temp', label: 'Reactor temperature', unit: '\u00b0C', step: 1,
+        normal: [58, 65],
+        warn:   [55, 68],
+        reset:  'Clears automatically once temperature returns above 58 \u00b0C.',
+        authority: 'Operator'
+    },
+    {
+        key: 'meoh', label: 'Methanol', unit: '%', step: 0.1,
+        normal: [8.0, 14.0],
+        warn:   [6.0, 16.0],
+        reset:  'Clears when the next reading is inside the normal band.',
+        authority: 'Operator'
+    }
+];
+
+msg.payload = { screen, parameters };
+return msg;</pre>
+      </details>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3.5.43/dist/vue.global.prod.js"></script>
+<script>
+(function () {
+  const nodes = [{"id":"inj_boot","type":"inject","name":"load screen","wires":[["fn_state_table"]]},{"id":"fn_state_table","type":"function","name":"state table","func":"// A client just connected, or the flow just started. Either way this\n// node answers with the whole screen definition. The browser never\n// relies on a message it received before it was reloaded.\nif (msg.payload === 'lost') { return null; }\n\n// ---------------------------------------------------------------\n// THE STATE TABLE IS THE CONTRACT.\n// Condition -> indication -> reset rule -> authority.\n// The screen is generated from this. Change the table, change the\n// machine. Nothing below this node knows what a reactor is.\n// ---------------------------------------------------------------\n\nconst screen = {\n    equipment: 'BIO 1',\n    point: 'Reactor UIT',\n    round: 'Round 3 of 6',\n    gate: false            // true = this point releases a batch\n};\n\nconst parameters = [\n    {\n        key: 'mono', label: 'Monoglyceride', unit: '%', step: 0.01,\n        normal: [0.40, 0.70],\n        warn:   [0.30, 0.80],\n        reset:  'Clears when the next reading is inside the normal band.',\n        authority: 'Operator'\n    },\n    {\n        key: 'di', label: 'Diglyceride', unit: '%', step: 0.01,\n        normal: [0.00, 0.16],\n        warn:   [0.00, 0.20],\n        limit:  0.20,\n        reset:  'Does not clear. Supervisor decision required before release.',\n        authority: 'Supervisor'\n    },\n    {\n        key: 'tri', label: 'Triglyceride', unit: '%', step: 0.01,\n        normal: [0.00, 0.15],\n        warn:   [0.00, 0.20],\n        reset:  'Clears when the next reading is inside the normal band.',\n        authority: 'Operator'\n    },\n    {\n        key: 'temp', label: 'Reactor temperature', unit: '\\u00b0C', step: 1,\n        normal: [58, 65],\n        warn:   [55, 68],\n        reset:  'Clears automatically once temperature returns above 58 \\u00b0C.',\n        authority: 'Operator'\n    },\n    {\n        key: 'meoh', label: 'Methanol', unit: '%', step: 0.1,\n        normal: [8.0, 14.0],\n        warn:   [6.0, 16.0],\n        reset:  'Clears when the next reading is inside the normal band.',\n        authority: 'Operator'\n    }\n];\n\nmsg.payload = { screen, parameters };\nreturn msg;","wires":[["fn_cache","ui_screen"]]},{"id":"fn_evaluate","type":"function","name":"evaluate against table","func":"// Server-side evaluation. The screen never decides on its own\n// whether a value is acceptable; it asks. Same reason the biodiesel\n// compliance gate lived on the server.\n\nconst table = flow.get('table') || [];\nconst entered = msg.payload || {};\nconst results = {};\nlet worst = 'normal';\n\nfor (const p of table) {\n    const raw = entered[p.key];\n    if (raw === undefined || raw === null || raw === '') {\n        results[p.key] = { state: 'empty' };\n        if (worst === 'normal') { worst = 'incomplete'; }\n        continue;\n    }\n    const v = Number(raw);\n    let state = 'normal';\n    if (v < p.warn[0] || v > p.warn[1]) {\n        state = 'fault';\n    } else if (v < p.normal[0] || v > p.normal[1]) {\n        state = 'warning';\n    }\n    if (p.limit !== undefined && v > p.limit) { state = 'fault'; }\n\n    results[p.key] = { state, value: v, reset: p.reset, authority: p.authority };\n    if (state === 'fault') { worst = 'fault'; }\n    else if (state === 'warning' && worst !== 'fault') { worst = 'warning'; }\n}\n\nmsg.payload = { results, worst, at: new Date().toISOString() };\nreturn msg;","wires":[["ui_screen"]]},{"id":"fn_cache","type":"function","name":"cache table","func":"flow.set('table', msg.payload.parameters);\nreturn msg;","wires":[[]]},{"id":"ui_screen","type":"ui-template","name":"Measurement point","wires":[["fn_evaluate"]]},{"id":"ui_ctrl_1","type":"ui-control","name":"client connected","wires":[["fn_state_table"]]}];
+  const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const store = {};
+  const flow = { get: k => store[k], set: (k, v) => { store[k] = v } };
+  const clone = m => JSON.parse(JSON.stringify(m));
+  let vm = null;
+
+  // Deliver a message to a node and follow its wires, as the runtime would
+  function deliver (id, msg) {
+    const n = byId[id];
+    if (!n) { return }
+    if (n.type === 'ui-template') { if (vm) { vm.msg = clone(msg) } return }
+    if (n.type !== 'function') { return }
+    const out = new Function('msg', 'flow', 'node', n.func)(clone(msg), flow, { warn: console.warn, error: console.error });
+    if (out == null) { return }
+    const outs = Array.isArray(out) ? out : [out];
+    outs.forEach((m, i) => { if (m) { (n.wires[i] || []).forEach(w => deliver(w, m)) } });
+  }
+  function emitFrom (id, msg) { (byId[id].wires[0] || []).forEach(w => deliver(w, msg)) }
+
+  const component = (function () { 
+return {
+  data () {
+    return {
+      screen: { equipment: '', point: '', round: '' },
+      parameters: [],
+      values: {},
+      results: {},
+      worst: null,
+      submitted: false
+    }
+  },
+  computed: {
+    complete () {
+      return this.parameters.length > 0 && this.parameters.every(p => {
+        const v = this.values[p.key]
+        return v !== undefined && v !== null && v !== ''
+      })
+    },
+    actionable () {
+      return this.parameters
+        .filter(p => ['warning', 'fault'].includes(this.stateOf(p.key)))
+        .map(p => ({ key: p.key, label: p.label, reset: p.reset, authority: p.authority }))
+    },
+    banner () {
+      if (!this.submitted) { return null }
+      if (this.worst === 'fault') {
+        return {
+          kind: 'fault',
+          title: 'Reading outside limit',
+          body: 'This reading is filed and flagged. Release is blocked until a supervisor records a decision.'
+        }
+      }
+      if (this.worst === 'warning') {
+        return {
+          kind: 'warning',
+          title: 'Reading approaching limit',
+          body: 'Filed. The line keeps running. Check this point again on the next round.'
+        }
+      }
+      return { kind: 'ok', title: 'Reading filed', body: 'All values inside their normal band.' }
+    },
+    footNote () {
+      if (!this.complete) { return 'Enter all five values to submit.' }
+      if (!this.submitted) { return 'Values are checked on the server, not in this screen.' }
+      return 'Filed ' + (this.results.at ? '' : '') + 'this round.'
+    }
+  },
+  methods: {
+    stateOf (key) {
+      const r = this.results[key]
+      if (!r || r.state === 'empty') { return 'none' }
+      return r.state
+    },
+    pillText (key) {
+      const s = this.stateOf(key)
+      if (s === 'fault') { return 'Outside limit' }
+      if (s === 'warning') { return 'Near limit' }
+      if (s === 'normal') { return 'In range' }
+      return ''
+    },
+    bandText (p) {
+      if (p.limit !== undefined) { return 'Limit ' + p.limit + ' ' + p.unit }
+      return 'Normal ' + p.normal[0] + '\u2013' + p.normal[1] + ' ' + p.unit
+    },
+    submit () {
+      if (!this.complete) { return }
+      this.submitted = true
+      this.send({ payload: Object.assign({}, this.values) })
+    }
+  },
+  watch: {
+    msg: function (m) {
+      if (!m || !m.payload) { return }
+      if (m.payload.parameters) {
+        this.screen = m.payload.screen
+        this.parameters = m.payload.parameters
+        this.values = {}
+        this.results = {}
+        this.worst = null
+        this.submitted = false
+      }
+      if (m.payload.results) {
+        this.results = m.payload.results
+        this.worst = m.payload.worst
+      }
+    }
+  }
+}
+ })();
+  const tplNode = nodes.find(n => n.type === 'ui-template');
+  component.template = "\n  <div class=\"mp\">\n    <header class=\"mp-head\">\n      <div class=\"mp-id\">\n        <span class=\"mp-eq\">{{ screen.equipment }}</span>\n        <span class=\"mp-pt\">{{ screen.point }}</span>\n      </div>\n      <div class=\"mp-round\">{{ screen.round }}</div>\n    </header>\n\n    <div v-if=\"banner\" class=\"mp-banner\" :class=\"'is-' + banner.kind\">\n      <div class=\"mp-banner-t\">{{ banner.title }}</div>\n      <div class=\"mp-banner-b\">{{ banner.body }}</div>\n    </div>\n\n    <table class=\"mp-table\">\n      <tbody>\n        <tr v-for=\"p in parameters\" :key=\"p.key\" :class=\"'row-' + stateOf(p.key)\">\n          <td class=\"c-label\">\n            <div class=\"lbl\">{{ p.label }}</div>\n            <div class=\"band\">{{ bandText(p) }}</div>\n          </td>\n          <td class=\"c-input\">\n            <input\n              type=\"number\"\n              :step=\"p.step\"\n              v-model=\"values[p.key]\"\n              :aria-label=\"p.label\"\n              @keyup.enter=\"submit\" />\n            <span class=\"unit\">{{ p.unit }}</span>\n          </td>\n          <td class=\"c-state\">\n            <span class=\"pill\" :class=\"'p-' + stateOf(p.key)\">{{ pillText(p.key) }}</span>\n          </td>\n        </tr>\n      </tbody>\n    </table>\n\n    <div v-if=\"actionable.length\" class=\"mp-actions\">\n      <div v-for=\"a in actionable\" :key=\"a.key\" class=\"act\">\n        <div class=\"act-h\">{{ a.label }}</div>\n        <div class=\"act-r\">{{ a.reset }}</div>\n        <div class=\"act-a\">Who can act: {{ a.authority }}</div>\n      </div>\n    </div>\n\n    <footer class=\"mp-foot\">\n      <button class=\"btn\" :disabled=\"!complete\" @click=\"submit\">Submit reading</button>\n      <span class=\"foot-note\">{{ footNote }}</span>\n    </footer>\n  </div>\n";
+  component.mixins = [{
+    data () { return { msg: null } },
+    methods: { send (m) { emitFrom(tplNode.id, m) } }
+  }];
+
+  vm = Vue.createApp(component).mount('#screen');
+
+  // Start-up, as in the flow: the inject fires once, then this browser connects
+  nodes.filter(n => n.type === 'inject').forEach(n => emitFrom(n.id, { payload: Date.now() }));
+  nodes.filter(n => n.type === 'ui-control').forEach(n => emitFrom(n.id, { payload: 'connect' }));
+})();
+</script>
+</body>
+</html>

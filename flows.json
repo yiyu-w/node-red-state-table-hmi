@@ -1,0 +1,222 @@
+[
+ {
+  "id": "tab_isc_demo",
+  "type": "tab",
+  "label": "Measurement point HMI",
+  "disabled": false,
+  "info": "One measurement-point screen generated from a state table.\nSwap the state table, get a different machine's screen.\nFrame is standardised; parameters are configured."
+ },
+ {
+  "id": "ui_base_1",
+  "type": "ui-base",
+  "name": "Plant HMI",
+  "path": "/dashboard",
+  "appIcon": "",
+  "includeClientData": true,
+  "acceptsClientConfig": [
+   "ui-notification",
+   "ui-control",
+   "ui-template"
+  ],
+  "showPathInSidebar": false,
+  "headerContent": "page",
+  "navigationStyle": "fixed",
+  "titleBarStyle": "default",
+  "showReconnectNotification": true,
+  "notificationDisplayTime": 5,
+  "showDisconnectNotification": true
+ },
+ {
+  "id": "ui_theme_1",
+  "type": "ui-theme",
+  "name": "Plant",
+  "colors": {
+   "surface": "#1d2731",
+   "primary": "#3f6e8c",
+   "bgPage": "#eef0f1",
+   "groupBg": "#ffffff",
+   "groupOutline": "#c9ced2"
+  },
+  "sizes": {
+   "density": "comfortable",
+   "pagePadding": "12px",
+   "groupGap": "12px",
+   "groupBorderRadius": "2px",
+   "widgetGap": "10px"
+  }
+ },
+ {
+  "id": "ui_page_1",
+  "type": "ui-page",
+  "name": "Reactor UIT",
+  "ui": "ui_base_1",
+  "path": "/reactor-uit",
+  "icon": "flask-outline",
+  "layout": "grid",
+  "theme": "ui_theme_1",
+  "breakpoints": [
+   {
+    "name": "Default",
+    "px": "0",
+    "cols": "3"
+   },
+   {
+    "name": "Tablet",
+    "px": "576",
+    "cols": "6"
+   },
+   {
+    "name": "Small Desktop",
+    "px": "768",
+    "cols": "9"
+   },
+   {
+    "name": "Desktop",
+    "px": "1024",
+    "cols": "12"
+   }
+  ],
+  "order": 1,
+  "className": "",
+  "visible": true,
+  "disabled": false
+ },
+ {
+  "id": "ui_group_1",
+  "type": "ui-group",
+  "name": "Measurement entry",
+  "page": "ui_page_1",
+  "width": "12",
+  "height": "1",
+  "order": 1,
+  "showTitle": false,
+  "className": "",
+  "visible": true,
+  "disabled": false
+ },
+ {
+  "id": "inj_boot",
+  "type": "inject",
+  "z": "tab_isc_demo",
+  "name": "load screen",
+  "props": [
+   {
+    "p": "payload"
+   }
+  ],
+  "repeat": "",
+  "crontab": "",
+  "once": true,
+  "onceDelay": "0.4",
+  "topic": "",
+  "payload": "",
+  "payloadType": "date",
+  "x": 140,
+  "y": 120,
+  "wires": [
+   [
+    "fn_state_table"
+   ]
+  ]
+ },
+ {
+  "id": "fn_state_table",
+  "type": "function",
+  "z": "tab_isc_demo",
+  "name": "state table",
+  "func": "// A client just connected, or the flow just started. Either way this\n// node answers with the whole screen definition. The browser never\n// relies on a message it received before it was reloaded.\nif (msg.payload === 'lost') { return null; }\n\n// ---------------------------------------------------------------\n// THE STATE TABLE IS THE CONTRACT.\n// Condition -> indication -> reset rule -> authority.\n// The screen is generated from this. Change the table, change the\n// machine. Nothing below this node knows what a reactor is.\n// ---------------------------------------------------------------\n\nconst screen = {\n    equipment: 'BIO 1',\n    point: 'Reactor UIT',\n    round: 'Round 3 of 6',\n    gate: false            // true = this point releases a batch\n};\n\nconst parameters = [\n    {\n        key: 'mono', label: 'Monoglyceride', unit: '%', step: 0.01,\n        normal: [0.40, 0.70],\n        warn:   [0.30, 0.80],\n        reset:  'Clears when the next reading is inside the normal band.',\n        authority: 'Operator'\n    },\n    {\n        key: 'di', label: 'Diglyceride', unit: '%', step: 0.01,\n        normal: [0.00, 0.16],\n        warn:   [0.00, 0.20],\n        limit:  0.20,\n        reset:  'Does not clear. Supervisor decision required before release.',\n        authority: 'Supervisor'\n    },\n    {\n        key: 'tri', label: 'Triglyceride', unit: '%', step: 0.01,\n        normal: [0.00, 0.15],\n        warn:   [0.00, 0.20],\n        reset:  'Clears when the next reading is inside the normal band.',\n        authority: 'Operator'\n    },\n    {\n        key: 'temp', label: 'Reactor temperature', unit: '\\u00b0C', step: 1,\n        normal: [58, 65],\n        warn:   [55, 68],\n        reset:  'Clears automatically once temperature returns above 58 \\u00b0C.',\n        authority: 'Operator'\n    },\n    {\n        key: 'meoh', label: 'Methanol', unit: '%', step: 0.1,\n        normal: [8.0, 14.0],\n        warn:   [6.0, 16.0],\n        reset:  'Clears when the next reading is inside the normal band.',\n        authority: 'Operator'\n    }\n];\n\nmsg.payload = { screen, parameters };\nreturn msg;",
+  "outputs": 1,
+  "timeout": "",
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": [],
+  "x": 330,
+  "y": 120,
+  "wires": [
+   [
+    "fn_cache",
+    "ui_screen"
+   ]
+  ]
+ },
+ {
+  "id": "fn_evaluate",
+  "type": "function",
+  "z": "tab_isc_demo",
+  "name": "evaluate against table",
+  "func": "// Server-side evaluation. The screen never decides on its own\n// whether a value is acceptable; it asks. Same reason the biodiesel\n// compliance gate lived on the server.\n\nconst table = flow.get('table') || [];\nconst entered = msg.payload || {};\nconst results = {};\nlet worst = 'normal';\n\nfor (const p of table) {\n    const raw = entered[p.key];\n    if (raw === undefined || raw === null || raw === '') {\n        results[p.key] = { state: 'empty' };\n        if (worst === 'normal') { worst = 'incomplete'; }\n        continue;\n    }\n    const v = Number(raw);\n    let state = 'normal';\n    if (v < p.warn[0] || v > p.warn[1]) {\n        state = 'fault';\n    } else if (v < p.normal[0] || v > p.normal[1]) {\n        state = 'warning';\n    }\n    if (p.limit !== undefined && v > p.limit) { state = 'fault'; }\n\n    results[p.key] = { state, value: v, reset: p.reset, authority: p.authority };\n    if (state === 'fault') { worst = 'fault'; }\n    else if (state === 'warning' && worst !== 'fault') { worst = 'warning'; }\n}\n\nmsg.payload = { results, worst, at: new Date().toISOString() };\nreturn msg;",
+  "outputs": 1,
+  "timeout": "",
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": [],
+  "x": 560,
+  "y": 220,
+  "wires": [
+   [
+    "ui_screen"
+   ]
+  ]
+ },
+ {
+  "id": "fn_cache",
+  "type": "function",
+  "z": "tab_isc_demo",
+  "name": "cache table",
+  "func": "flow.set('table', msg.payload.parameters);\nreturn msg;",
+  "outputs": 1,
+  "timeout": "",
+  "noerr": 0,
+  "initialize": "",
+  "finalize": "",
+  "libs": [],
+  "x": 560,
+  "y": 60,
+  "wires": [
+   []
+  ]
+ },
+ {
+  "id": "ui_screen",
+  "type": "ui-template",
+  "z": "tab_isc_demo",
+  "group": "ui_group_1",
+  "page": "",
+  "ui": "",
+  "name": "Measurement point",
+  "order": 1,
+  "width": "12",
+  "height": "14",
+  "head": "",
+  "format": "<template>\n  <div class=\"mp\">\n    <header class=\"mp-head\">\n      <div class=\"mp-id\">\n        <span class=\"mp-eq\">{{ screen.equipment }}</span>\n        <span class=\"mp-pt\">{{ screen.point }}</span>\n      </div>\n      <div class=\"mp-round\">{{ screen.round }}</div>\n    </header>\n\n    <div v-if=\"banner\" class=\"mp-banner\" :class=\"'is-' + banner.kind\">\n      <div class=\"mp-banner-t\">{{ banner.title }}</div>\n      <div class=\"mp-banner-b\">{{ banner.body }}</div>\n    </div>\n\n    <table class=\"mp-table\">\n      <tbody>\n        <tr v-for=\"p in parameters\" :key=\"p.key\" :class=\"'row-' + stateOf(p.key)\">\n          <td class=\"c-label\">\n            <div class=\"lbl\">{{ p.label }}</div>\n            <div class=\"band\">{{ bandText(p) }}</div>\n          </td>\n          <td class=\"c-input\">\n            <input\n              type=\"number\"\n              :step=\"p.step\"\n              v-model=\"values[p.key]\"\n              :aria-label=\"p.label\"\n              @keyup.enter=\"submit\" />\n            <span class=\"unit\">{{ p.unit }}</span>\n          </td>\n          <td class=\"c-state\">\n            <span class=\"pill\" :class=\"'p-' + stateOf(p.key)\">{{ pillText(p.key) }}</span>\n          </td>\n        </tr>\n      </tbody>\n    </table>\n\n    <div v-if=\"actionable.length\" class=\"mp-actions\">\n      <div v-for=\"a in actionable\" :key=\"a.key\" class=\"act\">\n        <div class=\"act-h\">{{ a.label }}</div>\n        <div class=\"act-r\">{{ a.reset }}</div>\n        <div class=\"act-a\">Who can act: {{ a.authority }}</div>\n      </div>\n    </div>\n\n    <footer class=\"mp-foot\">\n      <button class=\"btn\" :disabled=\"!complete\" @click=\"submit\">Submit reading</button>\n      <span class=\"foot-note\">{{ footNote }}</span>\n    </footer>\n  </div>\n</template>\n\n<script>\nexport default {\n  data () {\n    return {\n      screen: { equipment: '', point: '', round: '' },\n      parameters: [],\n      values: {},\n      results: {},\n      worst: null,\n      submitted: false\n    }\n  },\n  computed: {\n    complete () {\n      return this.parameters.length > 0 && this.parameters.every(p => {\n        const v = this.values[p.key]\n        return v !== undefined && v !== null && v !== ''\n      })\n    },\n    actionable () {\n      return this.parameters\n        .filter(p => ['warning', 'fault'].includes(this.stateOf(p.key)))\n        .map(p => ({ key: p.key, label: p.label, reset: p.reset, authority: p.authority }))\n    },\n    banner () {\n      if (!this.submitted) { return null }\n      if (this.worst === 'fault') {\n        return {\n          kind: 'fault',\n          title: 'Reading outside limit',\n          body: 'This reading is filed and flagged. Release is blocked until a supervisor records a decision.'\n        }\n      }\n      if (this.worst === 'warning') {\n        return {\n          kind: 'warning',\n          title: 'Reading approaching limit',\n          body: 'Filed. The line keeps running. Check this point again on the next round.'\n        }\n      }\n      return { kind: 'ok', title: 'Reading filed', body: 'All values inside their normal band.' }\n    },\n    footNote () {\n      if (!this.complete) { return 'Enter all five values to submit.' }\n      if (!this.submitted) { return 'Values are checked on the server, not in this screen.' }\n      return 'Filed ' + (this.results.at ? '' : '') + 'this round.'\n    }\n  },\n  methods: {\n    stateOf (key) {\n      const r = this.results[key]\n      if (!r || r.state === 'empty') { return 'none' }\n      return r.state\n    },\n    pillText (key) {\n      const s = this.stateOf(key)\n      if (s === 'fault') { return 'Outside limit' }\n      if (s === 'warning') { return 'Near limit' }\n      if (s === 'normal') { return 'In range' }\n      return ''\n    },\n    bandText (p) {\n      if (p.limit !== undefined) { return 'Limit ' + p.limit + ' ' + p.unit }\n      return 'Normal ' + p.normal[0] + '\\u2013' + p.normal[1] + ' ' + p.unit\n    },\n    submit () {\n      if (!this.complete) { return }\n      this.submitted = true\n      this.send({ payload: Object.assign({}, this.values) })\n    }\n  },\n  watch: {\n    msg: function (m) {\n      if (!m || !m.payload) { return }\n      if (m.payload.parameters) {\n        this.screen = m.payload.screen\n        this.parameters = m.payload.parameters\n        this.values = {}\n        this.results = {}\n        this.worst = null\n        this.submitted = false\n      }\n      if (m.payload.results) {\n        this.results = m.payload.results\n        this.worst = m.payload.worst\n      }\n    }\n  }\n}\n</script>\n\n<style>\n.mp {\n  font-family: \"Inter\", \"Segoe UI\", system-ui, sans-serif;\n  color: #1d2731;\n  padding: 4px 2px 8px;\n}\n.mp-head {\n  display: flex;\n  justify-content: space-between;\n  align-items: baseline;\n  padding-bottom: 10px;\n  border-bottom: 2px solid #1d2731;\n}\n.mp-eq {\n  font-weight: 700;\n  font-size: 15px;\n  letter-spacing: 0.04em;\n  margin-right: 10px;\n}\n.mp-pt { font-size: 22px; font-weight: 500; }\n.mp-round { font-size: 14px; color: #5b6670; }\n\n.mp-banner {\n  margin: 12px 0 0;\n  padding: 12px 14px;\n  border-left: 6px solid #5b6670;\n  background: #f2f4f5;\n}\n.mp-banner.is-fault { border-left-color: #a3231b; background: #fbeceb; }\n.mp-banner.is-warning { border-left-color: #a86b12; background: #fdf3e4; }\n.mp-banner.is-ok { border-left-color: #3f6e8c; background: #eef3f6; }\n.mp-banner-t { font-weight: 600; font-size: 15px; }\n.mp-banner-b { font-size: 14px; color: #3d4850; margin-top: 3px; }\n\n.mp-table { width: 100%; border-collapse: collapse; margin-top: 6px; }\n.mp-table td {\n  padding: 12px 8px;\n  border-bottom: 1px solid #dde1e4;\n  vertical-align: middle;\n}\n.row-fault { background: #fbeceb; }\n.row-warning { background: #fdf3e4; }\n\n.c-label { width: 45%; }\n.lbl { font-size: 15px; }\n.band { font-size: 12px; color: #6b757d; margin-top: 2px; }\n\n.c-input input {\n  width: 108px;\n  padding: 9px 10px;\n  font-size: 17px;\n  font-variant-numeric: tabular-nums;\n  border: 1px solid #9aa3aa;\n  border-radius: 2px;\n  background: #fff;\n  color: #1d2731;\n}\n.c-input input:focus { outline: 2px solid #3f6e8c; outline-offset: 1px; }\n.unit { margin-left: 7px; font-size: 13px; color: #6b757d; }\n\n.c-state { text-align: right; width: 30%; }\n.pill {\n  font-size: 12px;\n  padding: 3px 9px;\n  border-radius: 2px;\n  border: 1px solid transparent;\n}\n.p-none { color: transparent; }\n.p-normal { color: #55606a; }\n.p-warning { color: #7d4f08; border-color: #d9a441; background: #fdf3e4; font-weight: 600; }\n.p-fault { color: #fff; background: #a3231b; font-weight: 600; }\n\n.mp-actions { margin-top: 14px; }\n.act {\n  padding: 10px 12px;\n  border: 1px solid #dde1e4;\n  border-left: 4px solid #6b757d;\n  margin-bottom: 8px;\n  background: #fff;\n}\n.act-h { font-weight: 600; font-size: 14px; }\n.act-r { font-size: 14px; margin-top: 3px; }\n.act-a { font-size: 12px; color: #6b757d; margin-top: 4px; }\n\n.mp-foot {\n  margin-top: 16px;\n  display: flex;\n  align-items: center;\n  gap: 14px;\n}\n.btn {\n  padding: 11px 22px;\n  font-size: 15px;\n  border: none;\n  border-radius: 2px;\n  background: #3f6e8c;\n  color: #fff;\n  cursor: pointer;\n}\n.btn:disabled { background: #c2c8cc; color: #7b848b; cursor: not-allowed; }\n.foot-note { font-size: 13px; color: #6b757d; }\n</style>\n",
+  "storeOutMessages": true,
+  "passthru": false,
+  "resendOnRefresh": false,
+  "templateScope": "local",
+  "className": "",
+  "x": 800,
+  "y": 120,
+  "wires": [
+   [
+    "fn_evaluate"
+   ]
+  ]
+ },
+ {
+  "id": "ui_ctrl_1",
+  "type": "ui-control",
+  "z": "tab_isc_demo",
+  "name": "client connected",
+  "ui": "ui_base_1",
+  "events": "connect",
+  "x": 140,
+  "y": 180,
+  "wires": [
+   [
+    "fn_state_table"
+   ]
+  ]
+ }
+]
