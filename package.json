@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "start": "node-red --userDir . flows.json",
-    "build:preview": "node scripts/build-preview.js"
+    "build:preview": "node scripts/build-preview.js",
+    "build:recovery": "node scripts/build-recovery-preview.js"
   },
   "dependencies": {
     "@flowfuse/node-red-dashboard": "1.31.0",

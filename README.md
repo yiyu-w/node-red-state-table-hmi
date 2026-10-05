@@ -4,6 +4,8 @@ A measurement-entry screen for one sample point on a process line, built in Node
 
 **Try it in the browser:** https://yiyu-w.github.io/node-red-state-table-hmi/
 
+**Second screen, same method:** a warning-and-fault recovery demonstrator for one ISC CAM condition, in [`recovery/`](recovery/). Browser preview: https://yiyu-w.github.io/node-red-state-table-hmi/recovery/
+
 The browser preview runs the same template, function nodes and wiring as `flows.json`. The one difference is where evaluation happens: in the running flow the Node-RED server judges each reading; in the preview that function runs in the page.
 
 ## Run it

@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Infeed recovery · Node-RED recovery demonstrator (browser preview)</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font-family: "Inter", "Segoe UI", system-ui, sans-serif; background: #eef0f1; color: #1d2731; }
+  .bar { height: 56px; background: #1d2731; color: #fff; display: flex; align-items: center; padding: 0 18px; font-size: 20px; }
+  .shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: calc(100% - 56px); }
+  .nav { background: #1d2731; padding: 8px; }
+  .nav-item { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 3px; background: #2b3641; color: #fff; font-size: 15px; }
+  .nav-item svg { width: 20px; height: 20px; fill: #fff; flex: none; }
+  main { padding: 12px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .group { background: #fff; border: 1px solid #c9ced2; border-radius: 2px; padding: 14px 16px; }
+  .note { margin: 0; font-size: 13px; line-height: 1.55; color: #3d4850; max-width: 72ch; }
+  .note a { color: #3f6e8c; }
+  details summary { cursor: pointer; font-size: 14px; font-weight: 600; padding: 2px 0; }
+  details summary:focus-visible, .btn:focus-visible { outline: 2px solid #1d2731; outline-offset: 2px; }
+  details p { font-size: 13px; line-height: 1.55; color: #3d4850; max-width: 72ch; margin: 8px 0 10px; }
+  pre { margin: 0; overflow-x: auto; background: #f5f6f7; border: 1px solid #dde1e4; padding: 12px 14px; font: 12.5px/1.5 ui-monospace, "SF Mono", Menlo, monospace; color: #1d2731; }
+
+.sr {
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  color: #1d2731;
+  padding: 2px 2px 0;
+}
+
+/* header */
+.sr-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #1d2731;
+}
+.sr-eq { font-size: 20px; font-weight: 500; }
+.sr-zone { font-size: 20px; color: #5b6670; margin-left: 10px; }
+.sr-run { font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: #8a939a; }
+
+/* normal */
+.sr-calm { padding: 34px 4px 30px; }
+.sr-calm-line { font-size: 17px; }
+.sr-calm-sub { font-size: 13px; color: #6b757d; margin-top: 5px; }
+
+/* abnormal card */
+.sr-card {
+  margin-top: 14px;
+  padding: 16px 18px 18px;
+  border-left: 6px solid #5b6670;
+  background: #f2f4f5;
+}
+.sr-card.is-warning { border-left-color: #a86b12; background: #fdf3e4; }
+.sr-card.is-fault   { border-left-color: #a3231b; background: #fbeceb; }
+.sr-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.sr-card.is-warning .sr-tier { color: #7d4f08; font-weight: 600; }
+.sr-card.is-fault .sr-tier   { color: #a3231b; font-weight: 600; }
+.sr-elapsed { color: #6b757d; font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: 0; }
+.sr-title { font-size: 21px; font-weight: 600; margin: 8px 0 4px; }
+.sr-meaning { font-size: 15px; color: #3d4850; margin: 0 0 14px; }
+
+.sr-block-h {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b757d;
+  margin-bottom: 4px;
+}
+.sr-steps { margin: 0 0 14px; padding-left: 20px; font-size: 15px; line-height: 1.5; }
+
+.sr-facts { display: grid; grid-template-columns: 1fr 1.2fr 0.6fr; gap: 28px; margin-bottom: 16px; }
+.sr-fact { display: flex; flex-direction: column; }
+.sr-fact-k {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b757d;
+}
+.sr-fact-v { font-size: 14px; margin-top: 2px; line-height: 1.4; }
+.sr-fact-v.is-open { color: #5b6670; border-bottom: 1.5px dashed #8a939a; align-self: flex-start; }
+.sr-actions { display: flex; align-items: center; gap: 18px; }
+.sr-src { font-size: 12px; color: #6b757d; }
+
+.sr-btn {
+  padding: 10px 20px;
+  font-size: 15px;
+  border: none;
+  border-radius: 2px;
+  background: #3f6e8c;
+  color: #fff;
+  cursor: pointer;
+}
+.sr-btn:disabled { background: #d4d8db; color: #7b848b; cursor: not-allowed; }
+
+/* monitored */
+.sr-watch { margin-top: 18px; padding-top: 12px; border-top: 1px solid #dde1e4; }
+.sr-watch-h {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b757d;
+  margin-bottom: 6px;
+}
+.sr-watch-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.sr-watch-list li { font-size: 13px; color: #8a939a; }
+.sr-watch-list li.is-on { color: #1d2731; font-weight: 500; }
+
+/* equipment identity bar */
+.sr-foot {
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px solid #dde1e4;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  font-size: 12px;
+  color: #6b757d;
+}
+.sr-sim { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.sr-sim label { font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+.sr-sim select {
+  font-size: 12px;
+  padding: 3px 6px;
+  border: 1px solid #c2c8cc;
+  border-radius: 2px;
+  background: #fff;
+  color: #1d2731;
+}
+
+  @media (max-width: 700px) {
+    .shell { grid-template-columns: 1fr; }
+    .nav { display: none; }
+    .c-label { width: auto; }
+    .c-input { white-space: nowrap; }
+    .c-input input { width: 76px; }
+    .btn { white-space: nowrap; }
+  }
+</style>
+</head>
+<body>
+<div class="bar">Infeed recovery</div>
+<div class="shell">
+  <nav class="nav" aria-label="Pages">
+    <div class="nav-item" aria-current="page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1c0-.21-.07-.41-.18-.57L13 9.16V4h-2v5.16L5.18 18.43c-.11.16-.18.36-.18.57m1 3a3 3 0 0 1-3-3c0-.6.18-1.16.5-1.63L9 7.81V6a1 1 0 0 1-1-1V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1a1 1 0 0 1-1 1v1.81l5.5 9.56c.32.47.5 1.03.5 1.63a3 3 0 0 1-3 3zm7-6 1.34-1.34L16.27 18H7.73l2.66-4.61z"/></svg>
+      Infeed recovery
+    </div>
+  </nav>
+  <main>
+    <div class="group"><div id="screen"></div></div>
+    <div class="group">
+      <p class="note">Browser preview of a Node-RED screen built with FlowFuse Dashboard. It runs the same template, state-table function and wiring as <code>recovery/flows.json</code>; in the running flow that function runs on the Node-RED server. Use <b>Simulate</b> to raise the Infeed PE jammed warning or fault, then Reset. Conditions, corrective actions and reset rules are taken from the public ISC CAM Troubleshooting and Reference Manual (v2.x). The one open cell is who may act. A demonstrator for testing the interaction, not a replacement HMI. Source: <a href="https://github.com/yiyu-w/node-red-state-table-hmi/tree/main/recovery">github.com/yiyu-w/node-red-state-table-hmi/recovery</a> · <a href="../">measurement-point screen</a></p>
+    </div>
+    <div class="group">
+      <details>
+        <summary>The state table this screen is generated from</summary>
+        <p>Everything condition-specific lives here: what it means, what to do, what triggers it, how reset works and who may act. The screen holds no machine knowledge; add rows and the same card serves the next condition.</p>
+        <pre>// ---------------------------------------------------------------
+// THE STATE TABLE IS THE CONTRACT.
+// condition -&gt; indication -&gt; what clears it -&gt; who may act
+// The screen renders this. It holds no machine-specific knowledge.
+// Swap the table and the same frame serves another machine.
+// ---------------------------------------------------------------
+
+const equipment = {
+    model: 'ISC Carryway Automation Module',
+    zone: 'IDL-C v2.x',
+    badge: 'Demonstrator',
+    line: 'Conditions and wording: ISC CAM Troubleshooting and Reference Manual (v2.x)',
+    tag: '',
+    calmSub: 'Warning and fault history stays on the Fault page.'
+};
+
+// Warning/fault pairs as named in the v2.x manual. Only one pair is modelled.
+const monitored = [
+    'Gap between products',
+    'Infeed PE jammed',
+    'Product buffer',
+    'Product destination signal'
+];
+
+const steps = [
+    'Clear any product jams.',
+    'Limit the size of the products introduced.',
+    'Improve the product transfer.'
+];
+
+const conditions = [
+    {
+        id: 'infeed_jam_w',
+        label: 'Infeed PE jammed',
+        tier: 'warning',
+        meaning: 'A product has blocked the infeed PE for longer than the Jam warning distance, or a stranded product is keeping it blocked. The fault follows at the Jam distance.',
+        steps,
+        threshold: 'Jam warning distance, set slightly below the Jam distance. Cannot be disabled.',
+        reset: 'Automatically at the next trigger point once the condition is gone. Or Reset here, or from the PLC.',
+        authority: '? — to agree',
+        authorityOpen: true,
+        source: 'Troubleshooting and Reference · Infeed PE jammed',
+        manualReset: true
+    },
+    {
+        id: 'infeed_jam_f',
+        label: 'Infeed PE jammed',
+        tier: 'fault',
+        meaning: 'A product exceeded the Jam distance at the infeed PE, or a stranded product is obstructing it. The equipment attempts to divert the product.',
+        steps,
+        threshold: 'Jam distance, set by Intralox per application.',
+        reset: 'Automatically when the infeed PE is unblocked while the belt is in motion. Or Reset here, or from the PLC.',
+        authority: '? — to agree',
+        authorityOpen: true,
+        source: 'Troubleshooting and Reference · Infeed PE jammed',
+        manualReset: true
+    }
+];</pre>
+      </details>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3.5.43/dist/vue.global.prod.js"></script>
+<script>
+(function () {
+  const nodes = [{"id":"inj_boot","type":"inject","name":"load screen","wires":[["fn_state"]]},{"id":"fn_state","type":"function","name":"state table","func":"\n// ---------------------------------------------------------------\n// THE STATE TABLE IS THE CONTRACT.\n// condition -> indication -> what clears it -> who may act\n// The screen renders this. It holds no machine-specific knowledge.\n// Swap the table and the same frame serves another machine.\n// ---------------------------------------------------------------\n\nconst equipment = {\n    model: 'ISC Carryway Automation Module',\n    zone: 'IDL-C v2.x',\n    badge: 'Demonstrator',\n    line: 'Conditions and wording: ISC CAM Troubleshooting and Reference Manual (v2.x)',\n    tag: '',\n    calmSub: 'Warning and fault history stays on the Fault page.'\n};\n\n// Warning/fault pairs as named in the v2.x manual. Only one pair is modelled.\nconst monitored = [\n    'Gap between products',\n    'Infeed PE jammed',\n    'Product buffer',\n    'Product destination signal'\n];\n\nconst steps = [\n    'Clear any product jams.',\n    'Limit the size of the products introduced.',\n    'Improve the product transfer.'\n];\n\nconst conditions = [\n    {\n        id: 'infeed_jam_w',\n        label: 'Infeed PE jammed',\n        tier: 'warning',\n        meaning: 'A product has blocked the infeed PE for longer than the Jam warning distance, or a stranded product is keeping it blocked. The fault follows at the Jam distance.',\n        steps,\n        threshold: 'Jam warning distance, set slightly below the Jam distance. Cannot be disabled.',\n        reset: 'Automatically at the next trigger point once the condition is gone. Or Reset here, or from the PLC.',\n        authority: '? — to agree',\n        authorityOpen: true,\n        source: 'Troubleshooting and Reference · Infeed PE jammed',\n        manualReset: true\n    },\n    {\n        id: 'infeed_jam_f',\n        label: 'Infeed PE jammed',\n        tier: 'fault',\n        meaning: 'A product exceeded the Jam distance at the infeed PE, or a stranded product is obstructing it. The equipment attempts to divert the product.',\n        steps,\n        threshold: 'Jam distance, set by Intralox per application.',\n        reset: 'Automatically when the infeed PE is unblocked while the belt is in motion. Or Reset here, or from the PLC.',\n        authority: '? — to agree',\n        authorityOpen: true,\n        source: 'Troubleshooting and Reference · Infeed PE jammed',\n        manualReset: true\n    }\n];\n\nflow.set('conditions', conditions);\n\nconst p = (msg.payload && typeof msg.payload === 'object') ? msg.payload : {};\nlet active = flow.get('active') || null;\nlet since = flow.get('since') || null;\n\nif (p.action === 'raise' && p.id) {\n    const found = conditions.find(c => c.id === p.id) || null;\n    if (found && (!active || active.id !== found.id)) {\n        active = found;\n        since = Date.now();\n    }\n} else if (p.action === 'reset') {\n    active = null;\n    since = null;\n}\n\nflow.set('active', active);\nflow.set('since', since);\n\nmsg.payload = { equipment, monitored, conditions, active, since };\nreturn msg;\n","wires":[["ui_screen"]]},{"id":"ui_screen","type":"ui-template","name":"Sorter recovery","wires":[["fn_state"]]}];
+  const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const store = {};
+  const flow = { get: k => store[k], set: (k, v) => { store[k] = v } };
+  const clone = m => JSON.parse(JSON.stringify(m));
+  let vm = null;
+
+  // Deliver a message to a node and follow its wires, as the runtime would
+  function deliver (id, msg) {
+    const n = byId[id];
+    if (!n) { return }
+    if (n.type === 'ui-template') { if (vm) { vm.msg = clone(msg) } return }
+    if (n.type !== 'function') { return }
+    const out = new Function('msg', 'flow', 'node', n.func)(clone(msg), flow, { warn: console.warn, error: console.error });
+    if (out == null) { return }
+    const outs = Array.isArray(out) ? out : [out];
+    outs.forEach((m, i) => { if (m) { (n.wires[i] || []).forEach(w => deliver(w, m)) } });
+  }
+  function emitFrom (id, msg) { (byId[id].wires[0] || []).forEach(w => deliver(w, msg)) }
+
+  const component = (function () { 
+return {
+  data () {
+    return {
+      equipment: { model: '', zone: '', line: '', tag: '', badge: '', calmSub: '' },
+      conditions: [],
+      monitored: [],
+      active: null,
+      since: null,
+      now: Date.now(),
+      sim: '',
+      ticker: null
+    }
+  },
+  computed: {
+    elapsedText () {
+      if (!this.since) { return '' }
+      const s = Math.max(0, Math.floor((this.now - this.since) / 1000))
+      const m = Math.floor(s / 60)
+      return m > 0 ? m + ' min ' + (s % 60) + ' s' : s + ' s'
+    }
+  },
+  methods: {
+    fire () {
+      this.send({ payload: { action: this.sim ? 'raise' : 'reset', id: this.sim } })
+    }
+  },
+  mounted () {
+    this.ticker = setInterval(() => { this.now = Date.now() }, 1000)
+  },
+  unmounted () {
+    if (this.ticker) { clearInterval(this.ticker) }
+  },
+  watch: {
+    msg: {
+      immediate: true,
+      handler (m) {
+        if (!m || !m.payload) { return }
+        const p = m.payload
+        if (p.equipment) { this.equipment = p.equipment }
+        if (p.conditions) { this.conditions = p.conditions }
+        if (p.monitored) { this.monitored = p.monitored }
+        if (Object.prototype.hasOwnProperty.call(p, 'active')) {
+          this.active = p.active
+          this.since = p.since || null
+          this.sim = p.active ? p.active.id : ''
+        }
+      }
+    }
+  }
+}
+ })();
+  const tplNode = nodes.find(n => n.type === 'ui-template');
+  component.template = "\n  <div class=\"sr\">\n    <!-- header -->\n    <header class=\"sr-head\">\n      <div class=\"sr-id\">\n        <span class=\"sr-eq\">{{ equipment.model }}</span>\n        <span class=\"sr-zone\">{{ equipment.zone }}</span>\n      </div>\n      <div class=\"sr-run\">{{ equipment.badge }}</div>\n    </header>\n\n    <!-- NORMAL -->\n    <section v-if=\"!active\" class=\"sr-calm\">\n      <div class=\"sr-calm-line\">Running &middot; no active warnings or faults</div>\n      <div class=\"sr-calm-sub\">{{ equipment.calmSub }}</div>\n    </section>\n\n    <!-- WARNING / FAULT -->\n    <section v-else class=\"sr-card\" :class=\"'is-' + active.tier\">\n      <div class=\"sr-card-top\">\n        <span class=\"sr-tier\">{{ active.tier === 'fault' ? 'Fault' : 'Warning' }}</span>\n        <span class=\"sr-elapsed\">{{ elapsedText }}</span>\n      </div>\n\n      <h2 class=\"sr-title\">{{ active.label }}</h2>\n      <p class=\"sr-meaning\">{{ active.meaning }}</p>\n\n      <div class=\"sr-block\">\n        <div class=\"sr-block-h\">Corrective action</div>\n        <ol class=\"sr-steps\">\n          <li v-for=\"(s, i) in active.steps\" :key=\"i\">{{ s }}</li>\n        </ol>\n      </div>\n\n      <div class=\"sr-facts\">\n        <div class=\"sr-fact\">\n          <span class=\"sr-fact-k\">Triggered at</span>\n          <span class=\"sr-fact-v\">{{ active.threshold }}</span>\n        </div>\n        <div class=\"sr-fact\">\n          <span class=\"sr-fact-k\">Reset behaviour</span>\n          <span class=\"sr-fact-v\">{{ active.reset }}</span>\n        </div>\n        <div class=\"sr-fact\">\n          <span class=\"sr-fact-k\">Who may act</span>\n          <span class=\"sr-fact-v\" :class=\"{ 'is-open': active.authorityOpen }\">{{ active.authority }}</span>\n        </div>\n      </div>\n\n      <div class=\"sr-actions\">\n        <button\n          class=\"sr-btn\"\n          :disabled=\"!active.manualReset\"\n          @click=\"send({ payload: { action: 'reset' } })\">\n          {{ active.manualReset ? 'Reset' : 'Clears automatically' }}\n        </button>\n        <span class=\"sr-src\">{{ active.source }}</span>\n      </div>\n    </section>\n\n    <!-- monitored conditions, deliberately quiet -->\n    <section class=\"sr-watch\">\n      <div class=\"sr-watch-h\">Monitored</div>\n      <ul class=\"sr-watch-list\">\n        <li v-for=\"m in monitored\" :key=\"m\" :class=\"{ 'is-on': active && active.label === m }\">\n          {{ m }}\n        </li>\n      </ul>\n    </section>\n\n    <!-- equipment identity bar -->\n    <footer class=\"sr-foot\">\n      <span>{{ equipment.line }}</span>\n      \n      <span class=\"sr-sim\">\n        <label>Simulate</label>\n        <select v-model=\"sim\" @change=\"fire\">\n          <option value=\"\">— healthy —</option>\n          <option v-for=\"c in conditions\" :key=\"c.id\" :value=\"c.id\">{{ c.label }} ({{ c.tier }})</option>\n        </select>\n      </span>\n    </footer>\n  </div>\n";
+  component.mixins = [{
+    data () { return { msg: null } },
+    methods: { send (m) { emitFrom(tplNode.id, m) } }
+  }];
+
+  vm = Vue.createApp(component).mount('#screen');
+
+  // Start-up, as in the flow: the inject fires once, then this browser connects
+  nodes.filter(n => n.type === 'inject').forEach(n => emitFrom(n.id, { payload: Date.now() }));
+  nodes.filter(n => n.type === 'ui-control').forEach(n => emitFrom(n.id, { payload: 'connect' }));
+})();
+</script>
+</body>
+</html>
